@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: hrms-app
+
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env.local
+
+    restart: unless-stopped
+
+# Later add:
+
+# PostgreSQL
+# Redis
+# MinIO
+# Mailpit
