@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,293 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+//===================================================
+//ORGANIZATION TABLE
+//===================================================
+
+model Organization {
+  id String @id @default(uuid())
+
+  // Basic Information
+  name String
+  slug String @unique
+
+  // Branding
+  logoUrl String?
+
+  // Contact Information
+  website String?
+  email   String?
+  phone   String?
+
+  // Localization
+  timezone String  @default("UTC")
+  country  String?
+  currency String?
+
+  // Business Details
+  gstNumber          String?
+  registrationNumber String?
+
+  // Subscription
+  subscriptionPlan   SubscriptionPlan   @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+
+  // Status
+  status OrganizationStatus @default(ACTIVE)
+
+  // Audit
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  createdBy String?
+  updatedBy String?
+
+  // Relations
+  users       User[]
+  roles       Role[]
+  invitations OrganizationInvitation[]
+  userRoles   UserRole[]
+
+  @@index([status])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  EXPIRED
+  CANCELLED
+}
+
+//===================================================
+//USER TABLE
+//===================================================
+
+model User {
+  id String @id @default(uuid())
+
+  // Multi-Tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Authentication Identity
+  email     String
+  fullName  String
+  avatarUrl String?
+
+  // Account Status
+  status        UserStatus @default(INVITED)
+  emailVerified Boolean    @default(false)
+
+  // Security
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int                      @default(0)
+  lockedUntil         DateTime?
+  passwordChangedAt   DateTime?
+  sessionVersion      Int                      @default(1)
+  sentInvitations     OrganizationInvitation[] @relation("InvitationCreatedBy")
+
+  // Audit
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // RBAC
+  userRoles               UserRole[]
+  organizationInvitations OrganizationInvitation[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([organizationId, email])
+  @@index([status])
+  @@index([lastLoginAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+//===================================================
+//ROLE TABLE
+//===================================================
+
+model Role {
+  id String @id @default(uuid())
+
+  // Organization
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Role Information
+  name        String
+  description String?
+
+  // System Role
+  isSystem Boolean @default(false)
+
+  // Future Hierarchy
+  parentRoleId String?
+  parentRole   Role?                    @relation("RoleHierarchy", fields: [parentRoleId], references: [id])
+  childRoles   Role[]                   @relation("RoleHierarchy")
+  invitations  OrganizationInvitation[]
+
+  // Audit
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  createdBy String?
+  updatedBy String?
+
+  // Relations
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isSystem])
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+//===================================================
+//PERMISSION TABLE
+//===================================================
+
+model Permission {
+  id String @id @default(uuid())
+
+  // Permission Information
+  module      String
+  action      String
+  code        String  @unique
+  description String?
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+//===================================================
+//USERROLE TABLE
+//===================================================
+
+model UserRole {
+  id String @id @default(uuid())
+
+  // Multi-Tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Audit
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  @@unique([userId, roleId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+//===================================================
+//ROLEPERMISSION TABLE
+//===================================================
+
+model RolePermission {
+  id String @id @default(uuid())
+
+  // Relations
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+//===================================================
+//ORGANIZATIONINVITATION TABLE
+//===================================================
+
+model OrganizationInvitation {
+  id String @id @default(uuid())
+
+  // Organization
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Invited User
+  email     String
+  firstName String?
+  lastName  String?
+
+  // Initial Role
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  // Invitation
+  token String @unique
+
+  status InvitationStatus @default(PENDING)
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+
+  // Audit
+  invitedBy     String
+  invitedByUser User   @relation("InvitationCreatedBy", fields: [invitedBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
+  @@map("organization_invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
 }
