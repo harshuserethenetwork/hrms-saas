@@ -1,13 +1,23 @@
 import { LifeBuoy } from 'lucide-react';
 import Link from 'next/link';
+import LoginRight from './login-right';
+import { LoginForm } from './login-form';
+import { getOrganizationBySlug } from '../../organization/applications/services/get-organization-by-slug.service';
 
-export function LoginPage() {
+export default async function LoginPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const organization = await getOrganizationBySlug(slug);
+
   return (
     <div className="flex min-h-screen bg-white">
       {/* ── Left Panel ── */}
-      <div className="flex min-h-screen w-full flex-col px-8 py-10 sm:px-12 lg:w-[58%] lg:px-16 xl:w-1/2 xl:px-20">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center px-8 py-10 sm:px-12 lg:w-[60%] lg:px-16 xl:w-[60%] xl:px-10">
         {/* Logo */}
-        <div className="mb-10">
+        <div className="mb-10 w-full">
           <Link href="/" className="group inline-flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm transition-colors group-hover:bg-blue-700">
               <svg
@@ -31,7 +41,9 @@ export function LoginPage() {
         </div>
 
         {/* Form Area */}
-        <div className="flex w-full max-w-[480px] flex-1 flex-col justify-center"></div>
+        <div className="flex w-full max-w-[480px] flex-1 flex-col justify-center">
+          <LoginForm organization={organization} />
+        </div>
 
         {/* Footer */}
         <div className="mt-10 flex items-center justify-center gap-1.5 text-sm text-gray-400">
@@ -48,7 +60,7 @@ export function LoginPage() {
 
       {/* ── Right Panel (Image Placeholder) ── */}
       <div className="relative sticky top-0 ml-auto hidden min-h-screen overflow-hidden bg-gray-900 lg:flex lg:w-[35%] xl:w-[40%]">
-        Right Part
+        <LoginRight />
       </div>
     </div>
   );
