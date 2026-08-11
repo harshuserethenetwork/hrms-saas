@@ -56,7 +56,7 @@ export class AttendanceRepository {
   findTodayAttendance(
     organizationMemberId: string,
     attendanceDate: Date,
-  ): Promise<Attendance | null> {
+  ): Promise<AttendanceWithBreaks | null> {
     return this.client.attendance.findUnique({
       where: {
         organizationMemberId_attendanceDate: {

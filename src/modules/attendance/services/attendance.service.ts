@@ -131,29 +131,78 @@ export class AttendanceService {
   }
 
   async clockOut(membershipId: string) {
-    const organizationMemberId = membershipId;
-
+    // 1. Get today's date
     const today = new Date();
-
     today.setHours(0, 0, 0, 0);
 
-    const existingAttendance = await attendanceRepository.findTodayAttendance(
-      organizationMemberId,
+    // 2. Find today's attendance
+    const attendance = await attendanceRepository.findTodayAttendance(
+      membershipId,
       today,
     );
 
-    if (existingAttendance) {
-      throw new Error('You have already clocked in today.');
+    // 3. Employee must have clocked in first
+    if (!attendance) {
+      throw new Error('You have not clocked in today.');
     }
 
-    const attendance = await attendanceRepository.createAttendance({
-      organizationMemberId: membershipId,
+    // 4. Employee cannot clock out twice
+    if (attendance.clockOutAt) {
+      throw new Error('You have already clocked out for today.');
+    }
 
-      attendanceDate: today,
+    const clockInAt = attendance.clockInAt;
+    if (!clockInAt) {
+      throw new Error('Attendance record is missing a clock-in time.');
+    }
 
-      clockInAt: new Date(),
+    const clockOutAt = new Date();
+
+    // 5. Auto-end any active break so the break timeline stays closed
+    const activeBreak = attendance.breaks.find(
+      (breakRecord) => !breakRecord.endedAt,
+    );
+    if (activeBreak) {
+      const activeBreakSeconds = Math.floor(
+        (clockOutAt.getTime() - activeBreak.startedAt.getTime()) / 1000,
+      );
+      await attendanceRepository.endBreak(
+        activeBreak.id,
+        clockOutAt,
+        activeBreakSeconds,
+      );
+    }
+
+    // 6. Total presence = clock-out minus clock-in
+    const totalPresenceSeconds = Math.floor(
+      (clockOutAt.getTime() - clockInAt.getTime()) / 1000,
+    );
+
+    // 7. Total break seconds = sum of all break durations, including the
+    //    live duration of any break that was still active at clock-out.
+    let totalBreakSeconds = 0;
+    for (const breakRecord of attendance.breaks) {
+      totalBreakSeconds += breakRecord.durationSeconds;
+      if (!breakRecord.endedAt) {
+        totalBreakSeconds += Math.floor(
+          (clockOutAt.getTime() - breakRecord.startedAt.getTime()) / 1000,
+        );
+      }
+    }
+
+    // 8. Working seconds = presence minus break time (never negative)
+    const totalWorkingSeconds = Math.max(
+      totalPresenceSeconds - totalBreakSeconds,
+      0,
+    );
+
+    // 9. Persist clock-out time, durations and mark the day as PRESENT
+    return attendanceRepository.updateAttendance(attendance.id, {
+      clockOutAt,
+      totalPresenceSeconds,
+      totalBreakSeconds,
+      totalWorkingSeconds,
+      status: 'PRESENT',
     });
-
-    return attendance;
   }
 }
