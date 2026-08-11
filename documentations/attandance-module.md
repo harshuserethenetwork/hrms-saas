@@ -8,7 +8,7 @@ module. It covers every **available** API endpoint:
 - `POST /api/attendance/clock-in`
 - `POST /api/attendance/clock-out`
 - `POST /api/attendance/break/start`
-- `POST /api/attendance/break/start/end`
+- `POST /api/attendance/break/end`
 - `POST /api/attendance/today`
 
 ---
@@ -375,7 +375,7 @@ already has active break (500).
 
 ---
 
-### 4.4 POST `/api/attendance/break/start/end`
+### 4.4 POST `/api/attendance/break/end`
 
 **Purpose:** End the currently active break and store its duration.
 
@@ -388,7 +388,7 @@ already has active break (500).
 **Flow:**
 
 ```
-Route: src/app/api/attendance/break/start/end/route.ts
+Route: src/app/api/attendance/break/end/route.ts
   1. Parse JSON body, extract `id`.
   2. If missing → 400 "Membership ID is required".
   3. Call attendanceService.endBreak(id).
@@ -455,11 +455,12 @@ Service: AttendanceService.getTodayAttendance(membershipId)
   7. Return the attendance record.
 
 Route
-  8. Wrap in { success: true, data: attendance } → 201.
+  8. Wrap in { success: true, data: attendance } → 200.
+     If not clocked in → { success: true, data: null } → 200 (not an error).
      On error → { success: false, message } → 500.
 ```
 
-**Response (201):**
+**Response (200):**
 
 ```json
 {
@@ -486,14 +487,14 @@ Route
 }
 ```
 
-**Error cases:** missing id (400) · not clocked in yet (500 w/ message).
+**Error cases:** missing id (400) · not clocked in yet (200 with `data: null`).
 
 ---
 
 ## 5. State Machine (Expected Daily Flow)
 
 ```
-        clock-in                    break/start            break/start/end              clock-out
+        clock-in                    break/start            break/end                 clock-out
 NO RECORD ──────► CLOCKED IN ───────────────► ON BREAK ────────────────► CLOCKED IN ──────► CLOCKED OUT
                   (IN_PROGRESS)             (active break)            (break ended,     (status PRESENT,
                                                                        duration saved)   totals computed,
@@ -505,13 +506,13 @@ today/endpoint can be called at any point to read the current state.
 
 Guard rules enforced by the service at each step:
 
-| Endpoint          | Guard / Precondition                                                          |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `clock-in`        | No attendance record for today yet (rejects duplicate clock-in)               |
-| `clock-out`       | Attendance exists for today · not already clocked out · clock-in time present |
-| `break/start`     | Attendance exists for today · not clocked out · no active break               |
-| `break/start/end` | Attendance exists for today · an active break exists                          |
-| `today`           | Attendance exists for today                                                   |
+| Endpoint      | Guard / Precondition                                                          |
+| ------------- | ----------------------------------------------------------------------------- |
+| `clock-in`    | No attendance record for today yet (rejects duplicate clock-in)               |
+| `clock-out`   | Attendance exists for today · not already clocked out · clock-in time present |
+| `break/start` | Attendance exists for today · not clocked out · no active break               |
+| `break/end`   | Attendance exists for today · an active break exists                          |
+| `today`       | Attendance exists for today                                                   |
 
 ---
 

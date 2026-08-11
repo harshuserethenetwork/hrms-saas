@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google';
 import { Providers } from '@/providers';
+import { Toaster } from '@/components/ui/toaster';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 
@@ -33,7 +34,10 @@ export default function RootLayout({
           speed={200}
           shadow="0 0 10px #3b82f6, 0 0 5px #3b82f6"
         />
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

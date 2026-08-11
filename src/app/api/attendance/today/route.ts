@@ -14,20 +14,32 @@ export async function POST(request: Request) {
     }
 
     const attendance = await attendanceService.getTodayAttendance(membershipId);
-    console.log('todays: ', attendance);
     return NextResponse.json(
       {
         success: true,
         data: attendance,
       },
-      { status: 201 },
+      { status: 200 },
     );
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Internal Server Error';
+
+    // "No record yet" is a valid state for the dashboard, not an error.
+    if (message === 'You have not clocked in yet.') {
+      return NextResponse.json(
+        {
+          success: true,
+          data: null,
+        },
+        { status: 200 },
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : 'Internal Server Error',
+        message,
       },
       { status: 500 },
     );
