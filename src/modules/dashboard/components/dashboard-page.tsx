@@ -45,15 +45,7 @@ export function DashboardPage() {
 
       {/* Row 1: Time & Attendance | Leave Balance | Next Pay Day */}
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <LiveAttendanceCard
-          status="working"
-          checkInTime="09:02 AM"
-          currentShift="General (9:00 AM - 6:00 PM)"
-          dailyTargetHours={8}
-          dailyProgressHours={3.06}
-          workingDurationText="03h 08m 24s"
-          progressPercentage={38}
-        />
+        <LiveAttendanceCard dailyTargetHours={8} />
         <LeaveBalanceCard />
         <NextPaydayCard
           remainingDays={5}
