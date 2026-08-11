@@ -42,6 +42,31 @@ export class AttendanceService {
     return attendance;
   }
 
+  async getAttendanceHistory(membershipId: string, page = 1, pageSize = 10) {
+    const normalizedPage = Math.max(1, Math.floor(page));
+    const normalizedPageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
+
+    const [items, totalItems] = await Promise.all([
+      attendanceRepository.getAttendanceHistory(membershipId, {
+        page: normalizedPage,
+        pageSize: normalizedPageSize,
+      }),
+      attendanceRepository.countAttendance(membershipId),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / normalizedPageSize));
+
+    return {
+      items,
+      pagination: {
+        page: normalizedPage,
+        pageSize: normalizedPageSize,
+        totalItems,
+        totalPages,
+      },
+    };
+  }
+
   async startBreak(membershipId: string) {
     // 1. Get today's date
     const today = new Date();
