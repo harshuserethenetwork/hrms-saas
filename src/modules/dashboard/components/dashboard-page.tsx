@@ -13,9 +13,24 @@ import { LatestUpdatesCard } from './latest-updates-card';
 import { Calendar, Clock, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import type { CurrentUserDto } from '@/types/auth/me.types';
+import { useServerClock } from '@/hooks/useServerClock';
 
 export function DashboardPage() {
   const user: CurrentUserDto | null = useAuthStore((state) => state.user);
+
+  const currentTime = useServerClock();
+
+  const day = currentTime?.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const time = currentTime?.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <div className="mx-auto min-h-screen max-w-[1440px] space-y-6 bg-slate-50/50 p-4 sm:space-y-7 sm:p-6 lg:p-8 dark:bg-slate-950">
@@ -34,11 +49,11 @@ export function DashboardPage() {
         <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3.5 py-2 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
             <Calendar className="h-4 w-4 text-slate-400" />
-            <span>Thursday, 26 Sept 2023</span>
+            <span>{day ? day : 'Loading...'}</span>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3.5 py-2 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
             <Clock className="h-4 w-4 text-slate-400" />
-            <span>12:10 PM</span>
+            <span>{time ? time : 'Loading...'}</span>
           </div>
         </div>
       </div>
